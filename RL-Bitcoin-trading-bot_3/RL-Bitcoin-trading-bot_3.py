@@ -185,6 +185,7 @@ class CustomEnv:
     def replay(self, states, actions, rewards, predictions, dones, next_states):
         # reshape memory to appropriate shape for training
         states = np.vstack(states)
+        # print(states.shape)
         next_states = np.vstack(next_states)
         actions = np.vstack(actions)
         predictions = np.vstack(predictions)
@@ -212,6 +213,8 @@ class CustomEnv:
         a_loss = self.Actor.Actor.fit(states, y_true, epochs=self.epochs, verbose=0, shuffle=True)
         c_loss = self.Critic.Critic.fit(states, target, epochs=self.epochs, verbose=0, shuffle=True)
 
+        print("a_loss:", a_loss.history['loss'])
+        print("c_loss:", c_loss.history['loss'])
         self.writer.add_scalar('Data/actor_loss_per_replay', np.sum(a_loss.history['loss']), self.replay_count)
         self.writer.add_scalar('Data/critic_loss_per_replay', np.sum(c_loss.history['loss']), self.replay_count)
         self.replay_count += 1
@@ -220,6 +223,7 @@ class CustomEnv:
         # Use the network to predict the next action to take, using the model
         prediction = self.Actor.predict(np.expand_dims(state, axis=0))[0]
         action = np.random.choice(self.action_space, p=prediction)
+        # print(action, prediction)
         return action, prediction
 
     def save(self, name="Crypto_trader"):
@@ -259,6 +263,7 @@ def train_agent(env, visualize=False, train_episodes = 50, training_batch_size=5
             env.render(visualize)
             action, prediction = env.act(state)
             next_state, reward, done = env.step(action)
+            # print(state.shape) # look_back_window_size * feature_size
             states.append(np.expand_dims(state, axis=0))
             next_states.append(np.expand_dims(next_state, axis=0))
             action_onehot = np.zeros(3)
@@ -268,7 +273,7 @@ def train_agent(env, visualize=False, train_episodes = 50, training_batch_size=5
             dones.append(done)
             predictions.append(prediction)
             state = next_state
-            
+        
         env.replay(states, actions, rewards, predictions, dones, next_states)
         total_average.append(env.net_worth)
         average = np.average(total_average)
@@ -309,6 +314,6 @@ test_df = df[-720-lookback_window_size:] # 30 days
 train_env = CustomEnv(train_df, lookback_window_size=lookback_window_size)
 test_env = CustomEnv(test_df, lookback_window_size=lookback_window_size)
 
-#train_agent(train_env, visualize=False, train_episodes=20000, training_batch_size=500)
-test_agent(test_env, visualize=True, test_episodes=1000)
-Random_games(test_env, visualize=False, train_episodes = 1000)
+train_agent(train_env, visualize=False, train_episodes=20000, training_batch_size=50)
+# test_agent(test_env, visualize=True, test_episodes=1000)
+# Random_games(test_env, visualize=False, train_episodes = 1000)
